@@ -1,6 +1,39 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import numpy as np
+import matplotlib.pyplot as plt
+
+def show_image(reconstructed_image: np.ndarray, ground_truth_image: np.ndarray) -> None:
+    """
+    Show the reconstructed image and the ground truth image side by side.
+
+    Args:
+        reconstructed_image (np.ndarray): The reconstructed image.
+        ground_truth_image (np.ndarray): The ground truth image.
+
+    Returns:
+        None
+    """
+    plt.figure(figsize=(12, 6))  # Make the images larger
+
+    # Show reconstructed image
+    plt.subplot(1, 2, 1)
+    plt.imshow(reconstructed_image, cmap="gray", vmin=-4, vmax=4)
+    plt.title("Reconstructed Image")
+    plt.axis("off")
+
+    # Show ground truth image
+    plt.subplot(1, 2, 2)
+    plt.imshow(ground_truth_image, cmap="gray", vmin=-4, vmax=4)
+    plt.title("Ground Truth Image")
+    plt.axis("off")
+
+    plt.tight_layout()
+    plt.show()
+    return
+
+
 def read_image(timestamp: int, n_images: int = 1) -> tuple[list[float], list[int], list[int], list[int], list[int]]:
     """
     Read an image from a file.
@@ -70,21 +103,15 @@ def accumulate_events(t: list[float], x: list[int], y: list[int], p: list[int], 
         np.ndarray: The generated image.
     """
 
-    # Create the image
+    # Create an empty image
     image = np.zeros(image_size)
 
     # Accumulate the events
-    print(len(t), len(x), len(y), len(p))
     for i in range(len(t)):
         if p[i] == 1:
             image[y[i]-1, x[i]-1] += 1
         else:
             image[y[i]-1, x[i]-1] -= 1
-
-    # Plot the image
-    plt.figure(figsize=(6, 4))
-    plt.imshow(image, cmap='gray', vmin=-4, vmax=4)
-    plt.show()
 
     return image
 
@@ -92,4 +119,5 @@ if __name__ == "__main__":
     # get an image from the dataset
     image, t, x, y, p = read_image(0, 1)
     # get the events from the dataset between the 0th and 1st image
-    accumulate_events(t, x, y, p)
+    generated_image = accumulate_events(t, x, y, p)
+    show_image(generated_image, image)
