@@ -87,16 +87,51 @@ def read_image(timestamp: int, n_images: int = 1) -> tuple[list[float], list[int
                 break
     return ground_truth, t_list, x_list, y_list, p_list
 
-def accumulate_events(t: list[float], x: list[int], y: list[int], p: list[int], ground_truth: np.ndarray = None, image_size: tuple[int, int] = (180, 240)) -> np.ndarray:
+def time_surface(t: list[float], x: list[int], y: list[int], p: list[int], decay_function: callable = lambda dt: np.exp(-dt/0.1), image_size: tuple[int, int] = (180, 240)) -> np.ndarray:
     """
-    Generate an image based on the events.
+    Generate an image based on the events using a time surface approach with a decay function.
     
     Args:
         t (list[float]): The timestamps of the events.
         x (list[int]): The x-coordinates of the events.
         y (list[int]): The y-coordinates of the events.
         p (list[int]): The polarities of the events.
-        ground_truth (np.ndarray): The ground truth image.
+        decay_function (callable): The decay function to use. Default is an exponential decay.
+        image_size (tuple[int, int]): The size of the image.
+
+    Returns:
+        dp.ndarray: The generated image.
+    """
+    # Initialize the time surface
+    time_surface = np.zeros(image_size, dtype=np.float32)
+    current_time = max(t) if t else 0  # Use latest timestamp as a start
+
+    # Create an array to store the last event timestamps
+    last_event_time = np.full(image_size, -np.inf)  # Initialize with very low values
+
+    # Update the last event timestamp for each pixel
+    for i in range(len(t)):
+        last_event_time[y[i], x[i]] = t[i]
+
+    # Compute time difference and apply decay
+    delta_t = current_time - last_event_time
+    delta_t[delta_t < 0] = np.inf  # Ignore pixels with no events
+    time_surface = decay_function(delta_t)
+
+    return time_surface
+
+def accumulate_events(t: list[float], x: list[int], y: list[int], p: list[int], consider_polarity: bool = True, image_size: tuple[int, int] = (180, 240)) -> np.ndarray:
+    """
+    Generate an image based on the events using a simple accumulation.
+    
+    Args:
+        t (list[float]): The timestamps of the events.
+        x (list[int]): The x-coordinates of the events.
+        y (list[int]): The y-coordinates of the events.
+        p (list[int]): The polarities of the events.
+        consider_polarity (bool): Whether to consider the polarity of the events. Default is True.
+        - If False, all events are treated as positive.
+        - If True, the polarity is considered.
         image_size (tuple[int, int]): The size of the image.
 
     Returns:
@@ -108,10 +143,13 @@ def accumulate_events(t: list[float], x: list[int], y: list[int], p: list[int], 
 
     # Accumulate the events
     for i in range(len(t)):
-        if p[i] == 1:
-            image[y[i]-1, x[i]-1] += 1
+        if consider_polarity:
+            if p[i] == 1:
+                image[y[i]-1, x[i]-1] += 1
+            else:
+                image[y[i]-1, x[i]-1] -= 1
         else:
-            image[y[i]-1, x[i]-1] -= 1
+            image[y[i]-1, x[i]-1] += 1
 
     return image
 
@@ -119,5 +157,6 @@ if __name__ == "__main__":
     # get an image from the dataset
     image, t, x, y, p = read_image(0, 1)
     # get the events from the dataset between the 0th and 1st image
-    generated_image = accumulate_events(t, x, y, p)
+    generated_image = accumulate_events(t, x, y, p, consider_polarity=False)
+    # generated_image = time_surface(t, x, y, p)
     show_image(generated_image, image)
