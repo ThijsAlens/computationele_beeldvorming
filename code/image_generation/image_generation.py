@@ -87,6 +87,23 @@ def read_image(timestamp: int, n_images: int = 1) -> tuple[list[float], list[int
                 break
     return ground_truth, t_list, x_list, y_list, p_list
 
+def save_image(image: np.ndarray, filename: str) -> None:
+    """
+    Save the image to a file with proper grayscale normalization.
+    
+    Args:
+        image (np.ndarray): The image to save.
+        filename (str): The name of the file to save the image to.
+    
+    Returns:
+        None
+    """
+    vmin, vmax = 0, 1
+    normalized_image = np.clip((image - vmin) / (vmax - vmin), 0, 1)
+
+    plt.imsave(filename, normalized_image, cmap="gray")
+
+
 def time_surface(t: list[float], x: list[int], y: list[int], p: list[int], decay_function: callable = lambda dt: np.exp(-dt/0.1), image_size: tuple[int, int] = (180, 240)) -> np.ndarray:
     """
     Generate an image based on the events using a time surface approach with a decay function.
@@ -120,7 +137,7 @@ def time_surface(t: list[float], x: list[int], y: list[int], p: list[int], decay
 
     return time_surface
 
-def accumulate_events(t: list[float], x: list[int], y: list[int], p: list[int], consider_polarity: bool = True, image_size: tuple[int, int] = (180, 240)) -> np.ndarray:
+def generate_image(orig_image: list[float], t: list[float], x: list[int], y: list[int], p: list[int], consider_polarity: bool = True, image_size: tuple[int, int] = (180, 240)) -> np.ndarray:
     """
     Generate an image based on the events using a simple accumulation.
     
@@ -138,25 +155,69 @@ def accumulate_events(t: list[float], x: list[int], y: list[int], p: list[int], 
         np.ndarray: The generated image.
     """
 
-    # Create an empty image
-    image = np.zeros(image_size)
-
     # Accumulate the events
     for i in range(len(t)):
         if consider_polarity:
             if p[i] == 1:
-                image[y[i]-1, x[i]-1] += 1
+                orig_image[y[i]-1, x[i]-1] += 1
             else:
-                image[y[i]-1, x[i]-1] -= 1
+                orig_image[y[i]-1, x[i]-1] -= 1
         else:
-            image[y[i]-1, x[i]-1] += 1
+            orig_image[y[i]-1, x[i]-1] += 1
 
-    return image
+    return orig_image
+
+def generate_video(start: int, end: int, step: int = 1) -> None:
+    """
+    Generate a video from the images.
+    
+    Args:
+        start (int): The starting timestamp.
+        end (int): The ending timestamp.
+        step (int): The step size. Default is 1.
+    
+    Returns:
+        None
+    """
+    for i in range(start, end, step):
+        image, t, x, y, p = read_image(i, 1)
+        final_image = generate_image(image, t, x, y, p)
+        save_image(final_image, f"code/video/frame_{i}.png")
+    
+    import os
+    import cv2
+    image_dir = "code/video"
+    output_file = "code/video/output.mp4"
+    fps = 30
+    # Get all PNG files in sorted order
+    files = sorted(f for f in os.listdir(image_dir) if f.startswith("frame_") and f.endswith(".png"))
+    if not files:
+        print("No PNG files found.")
+        return
+
+    # Read first image to get frame size
+    first_frame = cv2.imread(os.path.join(image_dir, files[0]))
+    height, width, _ = first_frame.shape
+
+    # Initialize video writer
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # 'XVID' or 'avc1' also work
+    video = cv2.VideoWriter(output_file, fourcc, fps, (width, height))
+
+    for file in files:
+        frame = cv2.imread(os.path.join(image_dir, file))
+        video.write(frame)
+
+    video.release()
+
+    return
 
 if __name__ == "__main__":
     # get an image from the dataset
-    image, t, x, y, p = read_image(0, 1)
+    image, t, x, y, p = read_image(20, 1)
     # get the events from the dataset between the 0th and 1st image
-    generated_image = accumulate_events(t, x, y, p, consider_polarity=False)
+    generated_image = generate_image(image, t, x, y, p, consider_polarity=True)
     # generated_image = time_surface(t, x, y, p)
-    show_image(generated_image, image)
+    save_image(generated_image, "code/generated_image.png")
+    #show_image(generated_image, image)
+
+    generate_video(0, 100, 1)
