@@ -1,3 +1,7 @@
 venv
+.venv
 data/*
 !data/linkje.txt
+
+code/reconstruction/event_based_image_rec_inverse_problem/denoiser_model/drunet_gray.pth
+code/reconstruction/event_based_image_rec_inverse_problem/data/urban/events.txt
