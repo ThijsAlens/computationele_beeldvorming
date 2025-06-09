@@ -120,11 +120,10 @@ def time_surface(t: list[float], x: list[int], y: list[int], p: list[int], decay
         dp.ndarray: The generated image.
     """
     # Initialize the time surface
-    time_surface = np.zeros(image_size, dtype=np.float32)
-    current_time = max(t) if t else 0  # Use latest timestamp as a start
+    time_surface = np.zeros(image_size, dtype=np.int8)
+    current_time = max(t) if t else 0
 
-    # Create an array to store the last event timestamps
-    last_event_time = np.full(image_size, -np.inf)  # Initialize with very low values
+    last_event_time = np.full(image_size, -np.inf)
 
     # Update the last event timestamp for each pixel
     for i in range(len(t)):
@@ -159,9 +158,9 @@ def generate_image(orig_image: list[float], t: list[float], x: list[int], y: lis
     for i in range(len(t)):
         if consider_polarity:
             if p[i] == 1:
-                orig_image[y[i]-1, x[i]-1] += 1
+                orig_image[y[i]-1, x[i]-1] += 0.1
             else:
-                orig_image[y[i]-1, x[i]-1] -= 1
+                orig_image[y[i]-1, x[i]-1] -= 0.1
         else:
             orig_image[y[i]-1, x[i]-1] += 1
 
@@ -218,6 +217,5 @@ if __name__ == "__main__":
     generated_image = generate_image(image, t, x, y, p, consider_polarity=True)
     # generated_image = time_surface(t, x, y, p)
     save_image(generated_image, "code/generated_image.png")
-    #show_image(generated_image, image)
-
-    generate_video(0, 100, 1)
+    save_image(image, "code/ground_truth.png")
+    show_image(generated_image, image)
